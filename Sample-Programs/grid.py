@@ -1,3 +1,10 @@
+
+###################################################################################
+#
+# Implementation of Value Iteration for finding policy in Reinforcement Learning
+#
+###################################################################################
+
 import numpy as np
 
 # Define the grid and rewards
