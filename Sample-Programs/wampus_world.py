@@ -1,13 +1,16 @@
 import random
+import os
+
+def clear_screen():
+    os.system('cls' if os.name=='nt' else 'clear')
 
 class World:
-    def __init__(self, size):
+    def __init__(self, size, fill_random=False):
         self.size = size
         self.gold_location = (size-1, size-1)
         self.agent_location = (0, 0)
         self.pit_locations = set()
         self.wampus_locations = set()
-        self.grid = [[' ' for _ in range(size)] for _ in range(size)]
        
         # KB
         self.safe_locations = set() # list of locations that are safe
@@ -18,37 +21,52 @@ class World:
         self.confirmed_pits = set() # list of locations the agent is sure contain pits
         self.confirmed_wampus = set() # list of locations the agent is sure contain the Wampus
 
-        # Place gold
         # self.gold_location = (random.randint(0, size-1), random.randint(0, size-1))
-        self.grid[self.gold_location[0]][self.gold_location[1]] = 'G'
         
-        # Place pits
-        num_pits =  size // 2 # random.randint(1, size)
-        for _ in range(num_pits):
-            pit_location = (random.randint(0, size-1), random.randint(0, size-1))
-            self.pit_locations.add(pit_location)
-            self.grid[pit_location[0]][pit_location[1]] = 'P'
-        
-        # Place wampuss
-        num_wampuss = size // 2 # random.randint(1, size)
-        for _ in range(num_wampuss):
-            wampus_location = (random.randint(0, size-1), random.randint(0, size-1))
-            self.wampus_locations.add(wampus_location)
-            self.grid[wampus_location[0]][wampus_location[1]] = 'W'
+        self.grid =[['A', ' ', ' ', 'P', ' '],
+                    [' ', 'W', ' ', ' ', ' '],
+                    [' ', ' ', ' ', ' ', ' '],
+                    [' ', ' ', 'P', ' ', ' '],
+                    ['W', ' ', ' ', 'W', 'G']]
+ 
+        if fill_random: # fill the gird by random pits and wampus
+            self.grid = [[' ' for _ in range(size)] for _ in range(size)]
+            # Place gold
+            self.grid[self.gold_location[0]][self.gold_location[1]] = 'G'
             
+            # Place pits
+            num_pits =  size // 2 # random.randint(1, size)
+            for _ in range(num_pits):
+                pit_location = (random.randint(0, size-1), random.randint(0, size-1))
+                self.grid[pit_location[0]][pit_location[1]] = 'P'
+            
+            # Place wampuss
+            num_wampuss = size // 2 # random.randint(1, size)
+            for _ in range(num_wampuss):
+                wampus_location = (random.randint(0, size-1), random.randint(0, size-1))
+                self.grid[wampus_location[0]][wampus_location[1]] = 'W'
+
+        # find pits and wampus locations
+        for i in range(len(self.grid)):
+            for j in range(len(self.grid[i])):
+                if self.grid[i][j] == 'A':
+                    self.agent_location = (i,j)
+                elif self.grid[i][j] == 'G':
+                    self.gold_location = (i,j)
+                elif self.grid[i][j] == 'P':
+                    self.pit_locations.add((i, j))
+                elif self.grid[i][j] == 'W':
+                    self.wampus_locations.add((i, j))
         
     def show_world(self):
         print('                    WORLD                 ')
-        print('------------------------------------------')
         self.grid[self.agent_location[0]][self.agent_location[1]] = 'A'
         for row in self.grid:
             print(row)
-        print('------------------------------------------')
+        print()
 
 
     def show_kb(self):
-        print('                     KB                   ')
-        print('------------------------------------------')
         
         # Reset KB to empty state before updating
         KB = [[' ' for _ in range(self.size)] for _ in range(self.size)]
@@ -87,17 +105,31 @@ class World:
         
         # Determine the maximum width of each column
         column_widths = [max(len(KB[row][col]) 
-            for row in range(size)) for col in range(size)]
+            for row in range(self.size)) for col in range(self.size)]
         
         # Print the knowledge base with equal cell lengths
+        print("")
         for row in KB:
             formatted_row = " | ".join(cell.ljust(column_widths[i]) for i, cell in enumerate(row))
-            print("| " + formatted_row + " |")
+            print("        | " + formatted_row + " |")
         
-        print('------------------------------------------')
 
     def get_action(self):
-        return "down"
+        action = None
+        neighbors = self.get_neighbors()
+        for direction, cell in neighbors.items():
+            if (not cell in self.confirmed_wampus  
+                and not cell in self.confirmed_pits
+                and not cell in self.possible_pits
+                and not cell in self.possible_wampus
+                and not cell in self.safe_locations):
+                action = direction
+        if action is None:
+            for direction, cell in neighbors.items():
+                if direction in self.safe_locations:
+                    action = direction
+
+        return action
 
     def do_action(self, action):
         x, y = self.agent_location
@@ -140,78 +172,97 @@ class World:
         # Complete the rest of this function so that it finds confirmed_pits and confirmed_wampus
         # and updates possible pits and possible wampus
 
-    def percept(self):
+    def get_neighbors(self):
         x, y = self.agent_location
-        neighbors = []
+        neighbors = {}
         if x > 0:
-           neighbors.append((x-1, y))
+           neighbors["left"] = (x-1, y)
         if y > 0:
-           neighbors.append((x,  y-1))
+           neighbors["up"] = (x,  y-1)
         if x < self.size -1:
-           neighbors.append((x+1, y))
+           neighbors["right"] = (x+1, y)
         if y < self.size -1:
-           neighbors.append((x, y+1))
-        
+           neighbors["down"] = (x, y+1)
+        return neighbors
+
+    def percept(self):
+        # get the list of neighbors
+        neighbors = self.get_neighbors().values()    
         # Check if any neighbor has a pit
         near_pit = any(neighbor in self.pit_locations for neighbor in neighbors)
         
         # Check if any neighbor has a Wampus
         near_wampus = any(neighbor in self.wampus_locations for neighbor in neighbors)
         
-        # If there's a pit nearby, add neighbors to possible pits if they are valid
+        # If there's a pit nearby, add neighbors to possible pits 
         if near_pit:
             for neighbor in neighbors:
-                if 0 <= neighbor[0] < self.size and 0 <= neighbor[1] < self.size:
-                    self.possible_pits.add(neighbor)
+                self.possible_pits.add(neighbor)
         
-        # If there's a Wampus nearby, add neighbors to possible Wampus if they are valid
+        # If there's a Wampus nearby, add neighbors to possible Wampus 
         if near_wampus:
             for neighbor in neighbors:
-                if 0 <= neighbor[0] < self.size and 0 <= neighbor[1] < self.size:
-                    self.possible_wampus.add(neighbor)
+                self.possible_wampus.add(neighbor)
         
+def create_world():
+    size = "5" #input("Enter the world size:")
+    while not size.isnumeric():
+        print("!!! Enter a number !!!")
+        size = input("Enter the world size:")
+
+    size = int(size)
+    ans = input("Fill the world with random pits and wampus? (y/n):")
+    fill_random = ans.lower() == "y"
+    w = World(size, fill_random)
+    return w
+
 quit_game = False
 game_over = False
-restart = True
-solve = False
+restart = False
+take_action = False
+w = create_world()
 while not quit_game:
-    if restart:
-        size = "5" #input("Enter the world size:")
-        while not size.isnumeric():
-            print("!!! Enter a number !!!")
-            size = input("Enter the world size:")
-
-        size = int(size)
-        w = World(size)
-
     w.percept()
     w.update_kb()
+    
+    clear_screen()
     w.show_kb()
    
     msg = """
-        ********************************************
-        u)up d)down l)left r)right 
+        u)up d)down l)left  r)right 
+        t)take action    
+        w)show world 
+        R)restart 
+        q)quit
 
-        s)solve game w)show world R)restart q)quit
-        """
+        :"""
 
-    if not solve:
+    if not take_action:
         cmd = input(msg)
     quit_game = cmd.startswith("q")
     restart = cmd.startswith("R")
-    solve = cmd.startswith("s")
-    if solve:
+    take_action = cmd.startswith("t")
+    show_world = cmd.startswith("w")
+    if show_world:
+       w.show_world()
+       input("Enter any key to continue!")
+       continue
+    if quit_game:
+        break
+    if restart:
+        w = create_world()
+        continue
+
+    if take_action:
         action = w.get_action()
     else:
         action = cmd
-    if not quit_game and not restart: 
-        if cmd.startswith("w"):
-           w.show_world()
-        else:
-           game_over = w.do_action(action)
-        if game_over:
-            print("--------------------------------------")
-            print("!!!!!!!!!!!!!!! GAME OVER !!!!!!!!!!!!")
-            print("--------------------------------------")
-            restart = True
+    game_over = w.do_action(action)
+    if game_over:
+        print("--------------------------------------")
+        print("!!!!!!!!!!!!!!! GAME OVER !!!!!!!!!!!!")
+        print("--------------------------------------")
+        cmd = input("any key) restart  q) quit game:")
+        quit_game = cmd.startswith("q")
+        w = create_world()
 
