@@ -7,8 +7,8 @@ def clear_screen():
 class World:
     def __init__(self, size, fill_random=False):
         self.grid =[['A', ' ', ' ', 'P', ' '],
-                    [' ', 'W', ' ', ' ', ' '],
                     [' ', ' ', ' ', ' ', ' '],
+                    [' ', 'P', ' ', ' ', ' '],
                     [' ', ' ', 'P', ' ', ' '],
                     ['W', ' ', ' ', 'W', 'G']]
  
@@ -120,7 +120,7 @@ class World:
 
     def get_action(self):
         action = None
-        neighbors = self.get_neighbors()
+        neighbors = self.get_neighbors(self.agent_location)
         for direction, cell in neighbors.items():
             if (not cell in self.confirmed_wampus  
                 and not cell in self.confirmed_pits
@@ -184,8 +184,8 @@ class World:
         # Complete the rest of this function so that it finds confirmed_pits and confirmed_wampus
         # and updates possible pits and possible wampus
 
-    def get_neighbors(self):
-        y, x = self.agent_location
+    def get_neighbors(self, location):
+        y, x = location 
         neighbors = {}
         if x > 0:
            neighbors["left"] = (y, x-1)
@@ -198,23 +198,35 @@ class World:
         return neighbors
 
     def percept(self):
-        # get the list of neighbors
-        neighbors = self.get_neighbors().values()    
+        # get the list of neighbors of agent location
+        neighbors = self.get_neighbors(self.agent_location).values()    
+        
         # Check if any neighbor has a pit
         near_pit = any(neighbor in self.pit_locations for neighbor in neighbors)
+        # Check if any neighbor has a confirmed pit
+        near_confirmed_pit = any(neighbor in self.confirmed_pits for neighbor in neighbors)
         
         # Check if any neighbor has a Wampus
         near_wampus = any(neighbor in self.wampus_locations for neighbor in neighbors)
+        # Check if any neighbor has a confirmed Wampus
+        near_confirmed_wampus = any(neighbor in self.confirmed_wampus for neighbor in neighbors)
         
-        # If there's a pit nearby, add neighbors to possible pits 
-        if near_pit:
+        # If there's a pit nearby and there is no confirmed pit nearby, 
+        # add neighbors to possible pits 
+        if near_pit and not near_confirmed_pit:
             for neighbor in neighbors:
                 self.possible_pits.add(neighbor)
         
-        # If there's a Wampus nearby, add neighbors to possible Wampus 
-        if near_wampus:
+        # If there's a Wampus nearby and there is no confirmed wampus nearby, 
+        # add neighbors to possible Wampus 
+        if near_wampus and not near_confirmed_wampus:
             for neighbor in neighbors:
                 self.possible_wampus.add(neighbor)
+
+        # If there is no pit or wampus nearby, add all neighbors to the safe locations
+        if not near_pit and not near_wampus:
+            for neighbor in neighbors:
+                self.safe_locations.add(neighbor)
         
 def create_world(use_default=True):
     size = "5" 
