@@ -96,17 +96,19 @@ class World:
         
         print('------------------------------------------')
 
+    def get_action(self):
+        return "down"
 
-    def move_agent(self, direction):
+    def do_action(self, action):
         x, y = self.agent_location
         self.grid[x][y] = ' '
-        if direction.startswith('u'):
+        if action.startswith('u'):
             x -= 1
-        elif direction.startswith('d'):
+        elif action.startswith('d'):
             x += 1
-        elif direction.startswith('l'):
+        elif action.startswith('l'):
             y -= 1
-        elif direction.startswith('r'):
+        elif action.startswith('r'):
             y += 1
         
         if x < 0 or x >= self.size or y < 0 or y >= self.size:
@@ -137,10 +139,6 @@ class World:
                 self.possible_wampus.remove(loc)
         # Complete the rest of this function so that it finds confirmed_pits and confirmed_wampus
         # and updates possible pits and possible wampus
-
-    def solve(self):
-        # Optionally you can find the path and print the kb and path
-        pass
 
     def percept(self):
         x, y = self.agent_location
@@ -175,6 +173,7 @@ class World:
 quit_game = False
 game_over = False
 restart = True
+solve = False
 while not quit_game:
     if restart:
         size = "5" #input("Enter the world size:")
@@ -196,15 +195,23 @@ while not quit_game:
         s)solve game w)show world R)restart q)quit
         """
 
-    cmd = input(msg)
+    if not solve:
+        cmd = input(msg)
     quit_game = cmd.startswith("q")
     restart = cmd.startswith("R")
+    solve = cmd.startswith("s")
+    if solve:
+        action = w.get_action()
+    else:
+        action = cmd
     if not quit_game and not restart: 
         if cmd.startswith("w"):
            w.show_world()
         else:
-            game_over = w.move_agent(cmd)
+           game_over = w.do_action(action)
         if game_over:
+            print("--------------------------------------")
             print("!!!!!!!!!!!!!!! GAME OVER !!!!!!!!!!!!")
+            print("--------------------------------------")
             restart = True
 
