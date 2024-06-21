@@ -14,9 +14,9 @@ class World:
         self.safe_locations.add(self.agent_location)
 
         self.possible_pits = set() # list of locations possibly containing pits
-        self.possible_wampus = set() # list of locations possibly containing wampus
-        self.known_pits = set() # list of locations containing pits
-        self.known_wampus = set() # list of locations containing wampus
+        self.possible_wampus = set() # list of locations possibly containing the Wampus
+        self.confirmed_pits = set() # list of locations the agent is sure contain pits
+        self.confirmed_wampus = set() # list of locations the agent is sure contain the Wampus
 
         # Place gold
         # self.gold_location = (random.randint(0, size-1), random.randint(0, size-1))
@@ -77,12 +77,12 @@ class World:
             else:
                 KB[loc[0]][loc[1]] += '?w'
         
-        # Mark known pits
-        for loc in self.known_pits:
+        # Mark confirmed pits
+        for loc in self.confirmed_pits:
             KB[loc[0]][loc[1]] = 'P'
         
-        # Mark known wampus
-        for loc in self.known_wampus:
+        # Mark confirmed wampus
+        for loc in self.confirmed_wampus:
             KB[loc[0]][loc[1]] = 'W'
         
         # Determine the maximum width of each column
@@ -135,7 +135,7 @@ class World:
                 self.possible_pits.remove(loc)
             if loc in self.possible_wampus:
                 self.possible_wampus.remove(loc)
-        # Complete the rest of this function so that it finds known_pits and known_wampus
+        # Complete the rest of this function so that it finds confirmed_pits and confirmed_wampus
         # and updates possible pits and possible wampus
 
     def solve(self):
