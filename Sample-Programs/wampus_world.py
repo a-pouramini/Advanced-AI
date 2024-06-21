@@ -6,23 +6,6 @@ def clear_screen():
 
 class World:
     def __init__(self, size, fill_random=False):
-        self.size = size
-        self.gold_location = (size-1, size-1)
-        self.agent_location = (0, 0)
-        self.pit_locations = set()
-        self.wampus_locations = set()
-       
-        # KB
-        self.safe_locations = set() # list of locations that are safe
-        self.safe_locations.add(self.agent_location)
-
-        self.possible_pits = set() # list of locations possibly containing pits
-        self.possible_wampus = set() # list of locations possibly containing the Wampus
-        self.confirmed_pits = set() # list of locations the agent is sure contain pits
-        self.confirmed_wampus = set() # list of locations the agent is sure contain the Wampus
-
-        # self.gold_location = (random.randint(0, size-1), random.randint(0, size-1))
-        
         self.grid =[['A', ' ', ' ', 'P', ' '],
                     [' ', 'W', ' ', ' ', ' '],
                     [' ', ' ', ' ', ' ', ' '],
@@ -32,7 +15,7 @@ class World:
         if fill_random: # fill the gird by random pits and wampus
             self.grid = [[' ' for _ in range(size)] for _ in range(size)]
             # Place gold
-            self.grid[self.gold_location[0]][self.gold_location[1]] = 'G'
+            self.grid[size-1][size-1] = 'G'
             
             # Place pits
             num_pits =  size // 2 # random.randint(1, size)
@@ -46,7 +29,11 @@ class World:
                 wampus_location = (random.randint(0, size-1), random.randint(0, size-1))
                 self.grid[wampus_location[0]][wampus_location[1]] = 'W'
 
+        self.reset()
+        self.size = len(self.grid)
         # find pits and wampus locations
+        self.pit_locations = set()
+        self.wampus_locations = set()
         for i in range(len(self.grid)):
             for j in range(len(self.grid[i])):
                 if self.grid[i][j] == 'A':
@@ -58,16 +45,33 @@ class World:
                 elif self.grid[i][j] == 'W':
                     self.wampus_locations.add((i, j))
         
+    def reset(self):
+        size = len(self.grid)
+        self.gold_location = (size-1, size-1)
+        self.agent_location = (0, 0)
+       
+        # KB
+        self.safe_locations = set() # list of locations that are safe
+        self.safe_locations.add(self.agent_location)
+
+        self.possible_pits = set() # list of locations possibly containing pits
+        self.possible_wampus = set() # list of locations possibly containing the Wampus
+        self.confirmed_pits = set() # list of locations the agent is sure contain pits
+        self.confirmed_wampus = set() # list of locations the agent is sure contain the Wampus
+
     def show_world(self):
         print('                    WORLD                 ')
-        self.grid[self.agent_location[0]][self.agent_location[1]] = 'A'
+        loc = self.agent_location
+        if self.grid[loc[0]][loc[1]].strip() == '':
+            self.grid[loc[0]][loc[1]] = 'A'
+        elif not self.grid[loc[0]][loc[1]].strip() == 'A':
+            self.grid[loc[0]][loc[1]] = 'A ' + self.grid[loc[0]][loc[1]]
         for row in self.grid:
             print(row)
         print()
 
 
     def show_kb(self):
-        
         # Reset KB to empty state before updating
         KB = [[' ' for _ in range(self.size)] for _ in range(self.size)]
         
@@ -147,19 +151,26 @@ class World:
             print("Invalid move. Try again.")
         else:
             self.agent_location = (x, y)
-            if self.agent_location == self.gold_location:
-                print("Agent found the gold! The game is over.")
-                return True
-            elif self.agent_location in self.pit_locations:
-                print("Agent fell into a pit! Game over.")
-                return True
-            elif self.agent_location in self.wampus_locations:
-                print("Agent encountered a wampus! Game over.")
-                return True
-            else:
-                # print("Agent moved to:", self.agent_location)
-                pass
 
+    def is_game_finished(self):
+        if self.agent_location == self.gold_location:
+            print("--------------------------------------")
+            print("!!!!!!!!!!!!!!! You Won !!!!!!!!!!!!")
+            print("--------------------------------------")
+            print("Agent found the gold! The game is over.")
+            return True
+        elif self.agent_location in self.pit_locations:
+            print("--------------------------------------")
+            print("!!!!!!!!!!!!!!! GAME OVER !!!!!!!!!!!!")
+            print("--------------------------------------")
+            print("Agent fell into a pit! Game over.")
+            return True
+        elif self.agent_location in self.wampus_locations:
+            print("--------------------------------------")
+            print("!!!!!!!!!!!!!!! GAME OVER !!!!!!!!!!!!")
+            print("--------------------------------------")
+            print("Agent encountered a wampus! Game over.")
+            return True
         return False
 
     def update_kb(self):
@@ -204,16 +215,16 @@ class World:
             for neighbor in neighbors:
                 self.possible_wampus.add(neighbor)
         
-def create_world():
-    size = "5" #input("Enter the world size:")
-    while not size.isnumeric():
-        print("!!! Enter a number !!!")
-        size = input("Enter the world size:")
+def create_world(use_default=True):
+    size = "5" 
+    if not use_default:
+        input("Enter the world size:")
+        while not size.isnumeric():
+            print("!!! Enter a number !!!")
+            size = input("Enter the world size:")
 
     size = int(size)
-    ans = input("Fill the world with random pits and wampus? (y/n):")
-    fill_random = ans.lower() == "y"
-    w = World(size, fill_random)
+    w = World(size, fill_random = not use_default)
     return w
 
 quit_game = False
@@ -232,7 +243,7 @@ while not quit_game:
         u)up d)down l)left  r)right 
         t)take action    
         w)show world 
-        R)restart 
+        R)reset 
         q)quit
 
         :"""
@@ -240,7 +251,7 @@ while not quit_game:
     if not take_action:
         cmd = input(msg)
     quit_game = cmd.startswith("q")
-    restart = cmd.startswith("R")
+    reset = cmd.startswith("R")
     take_action = cmd.startswith("t")
     show_world = cmd.startswith("w")
     if show_world:
@@ -249,20 +260,20 @@ while not quit_game:
        continue
     if quit_game:
         break
-    if restart:
-        w = create_world()
+    if reset:
+        w.reset()
         continue
 
     if take_action:
         action = w.get_action()
     else:
         action = cmd
-    game_over = w.do_action(action)
+    w.do_action(action)
+    game_over = w.is_game_finished()
     if game_over:
-        print("--------------------------------------")
-        print("!!!!!!!!!!!!!!! GAME OVER !!!!!!!!!!!!")
-        print("--------------------------------------")
-        cmd = input("any key) restart  q) quit game:")
+        w.show_world()
+        cmd = input("r) restart n) new world  q) quit game:")
         quit_game = cmd.startswith("q")
-        w = create_world()
+        if not quit_game:
+            w = create_world(use_default = cmd != "n")
 
