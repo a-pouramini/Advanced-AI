@@ -1,0 +1,210 @@
+import random
+
+class World:
+    def __init__(self, size):
+        self.size = size
+        self.gold_location = (size-1, size-1)
+        self.agent_location = (0, 0)
+        self.pit_locations = set()
+        self.wampus_locations = set()
+        self.grid = [[' ' for _ in range(size)] for _ in range(size)]
+       
+        # KB
+        self.safe_locations = set() # list of locations that are safe
+        self.safe_locations.add(self.agent_location)
+
+        self.possible_pits = set() # list of locations possibly containing pits
+        self.possible_wampus = set() # list of locations possibly containing wampus
+        self.known_pits = set() # list of locations containing pits
+        self.known_wampus = set() # list of locations containing wampus
+
+        # Place gold
+        # self.gold_location = (random.randint(0, size-1), random.randint(0, size-1))
+        self.grid[self.gold_location[0]][self.gold_location[1]] = 'G'
+        
+        # Place pits
+        num_pits =  size // 2 # random.randint(1, size)
+        for _ in range(num_pits):
+            pit_location = (random.randint(0, size-1), random.randint(0, size-1))
+            self.pit_locations.add(pit_location)
+            self.grid[pit_location[0]][pit_location[1]] = 'P'
+        
+        # Place wampuss
+        num_wampuss = size // 2 # random.randint(1, size)
+        for _ in range(num_wampuss):
+            wampus_location = (random.randint(0, size-1), random.randint(0, size-1))
+            self.wampus_locations.add(wampus_location)
+            self.grid[wampus_location[0]][wampus_location[1]] = 'W'
+            
+        
+    def show_world(self):
+        print('                    WORLD                 ')
+        print('------------------------------------------')
+        self.grid[self.agent_location[0]][self.agent_location[1]] = 'A'
+        for row in self.grid:
+            print(row)
+        print('------------------------------------------')
+
+
+    def show_kb(self):
+        print('                     KB                   ')
+        print('------------------------------------------')
+        
+        # Reset KB to empty state before updating
+        KB = [[' ' for _ in range(self.size)] for _ in range(self.size)]
+        
+        # Mark the agent's current location
+        KB[self.agent_location[0]][self.agent_location[1]] = 'A'
+        
+        # Mark safe locations
+        for loc in self.safe_locations:
+            if KB[loc[0]][loc[1]].strip() == '':
+                KB[loc[0]][loc[1]] = '-'
+            else:
+                KB[loc[0]][loc[1]] = '-' + KB[loc[0]][loc[1]]
+        
+        # Mark possible pits
+        for loc in self.possible_pits:
+            if KB[loc[0]][loc[1]].strip() == '':
+                KB[loc[0]][loc[1]] = '?p'
+            else:
+                KB[loc[0]][loc[1]] += '?p'
+        
+        # Mark possible wampus locations
+        for loc in self.possible_wampus:
+            if KB[loc[0]][loc[1]].strip() == '':
+                KB[loc[0]][loc[1]] = '?w'
+            else:
+                KB[loc[0]][loc[1]] += '?w'
+        
+        # Mark known pits
+        for loc in self.known_pits:
+            KB[loc[0]][loc[1]] = 'P'
+        
+        # Mark known wampus
+        for loc in self.known_wampus:
+            KB[loc[0]][loc[1]] = 'W'
+        
+        # Determine the maximum width of each column
+        column_widths = [max(len(KB[row][col]) 
+            for row in range(size)) for col in range(size)]
+        
+        # Print the knowledge base with equal cell lengths
+        for row in KB:
+            formatted_row = " | ".join(cell.ljust(column_widths[i]) for i, cell in enumerate(row))
+            print("| " + formatted_row + " |")
+        
+        print('------------------------------------------')
+
+
+    def move_agent(self, direction):
+        x, y = self.agent_location
+        self.grid[x][y] = ' '
+        if direction.startswith('u'):
+            x -= 1
+        elif direction.startswith('d'):
+            x += 1
+        elif direction.startswith('l'):
+            y -= 1
+        elif direction.startswith('r'):
+            y += 1
+        
+        if x < 0 or x >= self.size or y < 0 or y >= self.size:
+            print("Invalid move. Try again.")
+        else:
+            self.agent_location = (x, y)
+            if self.agent_location == self.gold_location:
+                print("Agent found the gold! The game is over.")
+                return True
+            elif self.agent_location in self.pit_locations:
+                print("Agent fell into a pit! Game over.")
+                return True
+            elif self.agent_location in self.wampus_locations:
+                print("Agent encountered a wampus! Game over.")
+                return True
+            else:
+                # print("Agent moved to:", self.agent_location)
+                pass
+
+        return False
+
+    def update_kb(self):
+        self.safe_locations.add(self.agent_location)
+        for loc in self.safe_locations:
+            if loc in self.possible_pits:
+                self.possible_pits.remove(loc)
+            if loc in self.possible_wampus:
+                self.possible_wampus.remove(loc)
+        # Complete the rest of this function so that it finds known_pits and known_wampus
+        # and updates possible pits and possible wampus
+
+    def solve(self):
+        # Optionally you can find the path and print the kb and path
+        pass
+
+    def percept(self):
+        x, y = self.agent_location
+        neighbors = []
+        if x > 0:
+           neighbors.append((x-1, y))
+        if y > 0:
+           neighbors.append((x,  y-1))
+        if x < self.size -1:
+           neighbors.append((x+1, y))
+        if y < self.size -1:
+           neighbors.append((x, y+1))
+        
+        # Check if any neighbor has a pit
+        near_pit = any(neighbor in self.pit_locations for neighbor in neighbors)
+        
+        # Check if any neighbor has a Wampus
+        near_wampus = any(neighbor in self.wampus_locations for neighbor in neighbors)
+        
+        # If there's a pit nearby, add neighbors to possible pits if they are valid
+        if near_pit:
+            for neighbor in neighbors:
+                if 0 <= neighbor[0] < self.size and 0 <= neighbor[1] < self.size:
+                    self.possible_pits.add(neighbor)
+        
+        # If there's a Wampus nearby, add neighbors to possible Wampus if they are valid
+        if near_wampus:
+            for neighbor in neighbors:
+                if 0 <= neighbor[0] < self.size and 0 <= neighbor[1] < self.size:
+                    self.possible_wampus.add(neighbor)
+        
+quit_game = False
+game_over = False
+restart = True
+while not quit_game:
+    if restart:
+        size = "5" #input("Enter the world size:")
+        while not size.isnumeric():
+            print("!!! Enter a number !!!")
+            size = input("Enter the world size:")
+
+        size = int(size)
+        w = World(size)
+
+    w.percept()
+    w.update_kb()
+    w.show_kb()
+   
+    msg = """
+        ********************************************
+        u)up d)down l)left r)right 
+
+        s)solve game w)show world R)restart q)quit
+        """
+
+    cmd = input(msg)
+    quit_game = cmd.startswith("q")
+    restart = cmd.startswith("R")
+    if not quit_game and not restart: 
+        if cmd.startswith("w"):
+           w.show_world()
+        else:
+            game_over = w.move_agent(cmd)
+        if game_over:
+            print("!!!!!!!!!!!!!!! GAME OVER !!!!!!!!!!!!")
+            restart = True
+
