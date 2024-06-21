@@ -183,6 +183,8 @@ class World:
 
         # Complete the rest of this function so that it finds confirmed_pits and confirmed_wampus
         # and updates possible pits and possible wampus
+        # Guide: If at any stage, there is one possible wampus or pit, 
+        # then it can be added to confirmed ones
 
     def get_neighbors(self, location):
         y, x = location 
