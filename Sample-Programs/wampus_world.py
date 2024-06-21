@@ -130,27 +130,27 @@ class World:
                 action = direction
         if action is None:
             for direction, cell in neighbors.items():
-                if direction in self.safe_locations:
+                if cell in self.safe_locations:
                     action = direction
 
         return action
 
     def do_action(self, action):
-        x, y = self.agent_location
-        self.grid[x][y] = ' '
+        y, x = self.agent_location
+        self.grid[y][x] = ' '
         if action.startswith('u'):
-            x -= 1
-        elif action.startswith('d'):
-            x += 1
-        elif action.startswith('l'):
             y -= 1
-        elif action.startswith('r'):
+        elif action.startswith('d'):
             y += 1
+        elif action.startswith('l'):
+            x -= 1
+        elif action.startswith('r'):
+            x += 1
         
         if x < 0 or x >= self.size or y < 0 or y >= self.size:
             print("Invalid move. Try again.")
         else:
-            self.agent_location = (x, y)
+            self.agent_location = (y, x)
 
     def is_game_finished(self):
         if self.agent_location == self.gold_location:
@@ -180,20 +180,21 @@ class World:
                 self.possible_pits.remove(loc)
             if loc in self.possible_wampus:
                 self.possible_wampus.remove(loc)
+
         # Complete the rest of this function so that it finds confirmed_pits and confirmed_wampus
         # and updates possible pits and possible wampus
 
     def get_neighbors(self):
-        x, y = self.agent_location
+        y, x = self.agent_location
         neighbors = {}
         if x > 0:
-           neighbors["left"] = (x-1, y)
+           neighbors["left"] = (y, x-1)
         if y > 0:
-           neighbors["up"] = (x,  y-1)
+           neighbors["up"] = (y-1, x)
         if x < self.size -1:
-           neighbors["right"] = (x+1, y)
+           neighbors["right"] = (y, x+1)
         if y < self.size -1:
-           neighbors["down"] = (x, y+1)
+           neighbors["down"] = (y+1, x)
         return neighbors
 
     def percept(self):
@@ -248,8 +249,7 @@ while not quit_game:
 
         :"""
 
-    if not take_action:
-        cmd = input(msg)
+    cmd = input(msg)
     quit_game = cmd.startswith("q")
     reset = cmd.startswith("R")
     take_action = cmd.startswith("t")
