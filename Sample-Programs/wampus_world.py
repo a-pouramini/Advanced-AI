@@ -52,6 +52,7 @@ class World:
        
         # KB
         self.safe_locations = set() # list of locations that are safe
+        self.visited_locations = set() 
         self.safe_locations.add(self.agent_location)
 
         self.possible_pits = set() # list of locations possibly containing pits
@@ -122,12 +123,9 @@ class World:
         action = None
         neighbors = self.get_neighbors(self.agent_location)
         for direction, cell in neighbors.items():
-            if (not cell in self.confirmed_wampus  
-                and not cell in self.confirmed_pits
-                and not cell in self.possible_pits
-                and not cell in self.possible_wampus
-                and not cell in self.safe_locations):
+            if cell in self.safe_locations and not cell in self.visited_locations:
                 action = direction
+
         if action is None:
             for direction, cell in neighbors.items():
                 if cell in self.safe_locations:
@@ -151,6 +149,7 @@ class World:
             print("Invalid move. Try again.")
         else:
             self.agent_location = (y, x)
+            self.visited_locations.add(self.agent_location)
 
     def is_game_finished(self):
         if self.agent_location == self.gold_location:
