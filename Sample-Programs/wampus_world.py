@@ -21,7 +21,7 @@ GRID2 =[['A', ' ', ' ', 'P', ' '],
 class World:
     def __init__(self, size, fill_random=False):
 
-        self.grid = GRID1
+        self.grid = GRID2
  
         if fill_random: # fill the gird with random pits and wampus
             self.grid = [[' ' for _ in range(size)] for _ in range(size)]
@@ -69,6 +69,7 @@ class World:
         self.safe_locations = set() # list of locations that are safe
         self.visited_locations = set() 
         self.safe_locations.add(self.agent_location)
+        self.visited_locations.add(self.agent_location)
 
         self.possible_pits = {} # the pit number for the possible pits
         self.possible_wampus = {} # the wampus number for possible wampuses
@@ -142,9 +143,11 @@ class World:
                 action = direction
 
         if action is None:
-            for direction, cell in neighbors.items():
-                if cell in self.safe_locations:
-                    action = direction
+            # if all safe locations are visited
+            if self.safe_locations != self.visited_locations:
+                for direction, cell in neighbors.items():
+                    if cell in self.safe_locations:
+                        action = direction
 
         return action
 
@@ -187,6 +190,21 @@ class World:
             return True
         return False
 
+    def get_existing_tag(self, neighbors, tags):
+        near_tags = set()
+        far_tags = set()
+        for loc, tag in tags.items():
+            if loc in neighbors:
+                near_tags.add(tag)
+            else:
+                far_tags.add(tag)
+
+        for tag in near_tags:
+            if not tag in far_tags:
+                return tag
+
+        return None
+
     def update_kb(self):
         # add current agent location to safe locations
         self.safe_locations.add(self.agent_location)
@@ -219,12 +237,15 @@ class World:
         # If there's a pit nearby, add neighbors that aren't in safe locations to possible pits 
         if near_pit:
             # tag the possible pit with a pit number
-            self.pit_counter += 1
-            pit_tag = "p" + str(self.pit_counter)
+            pit_tag = self.get_existing_tag(neighbors, self.possible_pits)
+            if not pit_tag: # create a new tag for new pit 
+                self.pit_counter += 1
+                pit_tag = "p" + str(self.pit_counter)
             near_possible_pits = []
             for neighbor in neighbors:
                 if not neighbor in self.safe_locations:
-                   self.possible_pits[neighbor] = pit_tag
+                   if not neighbor in self.possible_pits:
+                       self.possible_pits[neighbor] = pit_tag
                    near_possible_pits.append(neighbor)
 
             # If there is only one possible pit then it is certainly pit 
@@ -236,13 +257,16 @@ class World:
         # If there's a Wampus nearby, 
         # add neighbors that aren't in safe locations to possible Wampus 
         if near_wampus: 
-            # tag the possible wampus with a wampus number
-            self.wampus_counter += 1
-            wampus_tag = "w" + str(self.wampus_counter)
+            # tag the possible wampus 
+            wampus_tag = self.get_existing_tag(neighbors, self.possible_wampus) 
+            if not wampus_tag: # create a new tag for new wampus
+                self.wampus_counter += 1
+                wampus_tag = "w" + str(self.wampus_counter)
             near_possible_wampus = []
             for neighbor in neighbors:
                 if not neighbor in self.safe_locations:
-                   self.possible_wampus[neighbor] = wampus_tag
+                   if not neighbor in self.possible_wampus:
+                       self.possible_wampus[neighbor] = wampus_tag
                    near_possible_wampus.append(neighbor)
 
             # If there is only one possible wampus then it is certainly wampus
@@ -276,8 +300,6 @@ class World:
         
         # Complete the rest of this function so that it finds confirmed_pits and confirmed_wampus
         # and updates possible pits and possible wampus
-        # Guide: If at any stage, there is one possible wampus or pit, 
-        # then it can be added to confirmed ones
 
     def get_neighbors(self, location):
         y, x = location 
@@ -354,7 +376,12 @@ while not quit_game:
         action = w.get_action()
     else:
         action = cmd
-    w.do_action(action)
+    if action is None:
+       print("!!!!!!! No safe location is left, you must select to enter a possible hazard")
+       input("Enter any key to continue!")
+       continue
+    else:
+        w.do_action(action)
     game_over = w.is_game_finished()
     if game_over:
         w.show_world()
