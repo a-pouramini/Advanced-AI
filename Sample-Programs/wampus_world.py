@@ -1,18 +1,29 @@
 import random
 import os
+from collections import Counter
 
 def clear_screen():
     os.system('cls' if os.name=='nt' else 'clear')
 
+# Grid 1
+GRID1 = [['A',' ',' ',' '],  
+         [' ',' ','P',' '],  
+         [' ',' ',' ',' '],  
+         [' ',' ','W','G']] 
+
+# Grid 2
+GRID2 =[['A', ' ', ' ', 'P', ' '],
+        [' ', ' ', ' ', ' ', ' '],
+        [' ', 'P', ' ', ' ', ' '],
+        [' ', ' ', 'P', ' ', ' '],
+        ['W', ' ', ' ', 'W', 'G']]
+
 class World:
     def __init__(self, size, fill_random=False):
-        self.grid =[['A', ' ', ' ', 'P', ' '],
-                    [' ', ' ', ' ', ' ', ' '],
-                    [' ', 'P', ' ', ' ', ' '],
-                    [' ', ' ', 'P', ' ', ' '],
-                    ['W', ' ', ' ', 'W', 'G']]
+
+        self.grid = GRID1
  
-        if fill_random: # fill the gird by random pits and wampus
+        if fill_random: # fill the gird with random pits and wampus
             self.grid = [[' ' for _ in range(size)] for _ in range(size)]
             # Place gold
             self.grid[size-1][size-1] = 'G'
@@ -49,14 +60,18 @@ class World:
         size = len(self.grid)
         self.gold_location = (size-1, size-1)
         self.agent_location = (0, 0)
+        self.breeze = False
+        self.stench = False
        
         # KB
+        self.pit_counter = 0
+        self.wampus_counter = 0
         self.safe_locations = set() # list of locations that are safe
         self.visited_locations = set() 
         self.safe_locations.add(self.agent_location)
 
-        self.possible_pits = set() # list of locations possibly containing pits
-        self.possible_wampus = set() # list of locations possibly containing the Wampus
+        self.possible_pits = {} # the pit number for the possible pits
+        self.possible_wampus = {} # the wampus number for possible wampuses
         self.confirmed_pits = set() # list of locations the agent is sure contain pits
         self.confirmed_wampus = set() # list of locations the agent is sure contain the Wampus
 
@@ -87,18 +102,18 @@ class World:
                 KB[loc[0]][loc[1]] = '-' + KB[loc[0]][loc[1]]
         
         # Mark possible pits
-        for loc in self.possible_pits:
+        for loc,tag in self.possible_pits.items():
             if KB[loc[0]][loc[1]].strip() == '':
-                KB[loc[0]][loc[1]] = '?p'
+                KB[loc[0]][loc[1]] = tag 
             else:
-                KB[loc[0]][loc[1]] += '?p'
+                KB[loc[0]][loc[1]] += " " + tag 
         
         # Mark possible wampus locations
-        for loc in self.possible_wampus:
+        for loc, tag in self.possible_wampus.items():
             if KB[loc[0]][loc[1]].strip() == '':
-                KB[loc[0]][loc[1]] = '?w'
+                KB[loc[0]][loc[1]] = tag
             else:
-                KB[loc[0]][loc[1]] += '?w'
+                KB[loc[0]][loc[1]] += " " + tag
         
         # Mark confirmed pits
         for loc in self.confirmed_pits:
@@ -108,7 +123,7 @@ class World:
         for loc in self.confirmed_wampus:
             KB[loc[0]][loc[1]] = 'W'
         
-        # Determine the maximum width of each column
+        # Determine the maximum width of each column, its used for printing the KB
         column_widths = [max(len(KB[row][col]) 
             for row in range(self.size)) for col in range(self.size)]
         
@@ -173,13 +188,92 @@ class World:
         return False
 
     def update_kb(self):
+        # add current agent location to safe locations
         self.safe_locations.add(self.agent_location)
+        # if current location is in possible wampus or pits, remove it from them
+        loc = self.agent_location
+        if loc in self.possible_pits:
+            del self.possible_pits[loc]
+        if loc in self.possible_wampus:
+            del self.possible_wampus[loc]
+        
+        # get the list of neighbors of agent location
+        neighbors = self.get_neighbors(self.agent_location).values()    
+
+        near_pit = False
+
+        if self.breeze:  # If the agent perceives a breeze
+            # Check if any neighbor has a confirmed pit
+            near_confirmed_pit = any(n in self.confirmed_pits for n in neighbors)
+            # There is a nearby pit if there is a breeze and its source is not confirmed
+            near_pit = not near_confirmed_pit
+
+        near_wampus = False
+
+        if self.stench:  # If the agent perceives a stench
+            # Check if any neighbor has a confirmed Wampus
+            near_confirmed_wampus = any(n in self.confirmed_wampus for n in neighbors)
+            # There is a nearby Wampus if there is a stench and its source is not confirmed
+            near_wampus = not near_confirmed_wampus
+
+        # If there's a pit nearby, add neighbors that aren't in safe locations to possible pits 
+        if near_pit:
+            # tag the possible pit with a pit number
+            self.pit_counter += 1
+            pit_tag = "p" + str(self.pit_counter)
+            near_possible_pits = []
+            for neighbor in neighbors:
+                if not neighbor in self.safe_locations:
+                   self.possible_pits[neighbor] = pit_tag
+                   near_possible_pits.append(neighbor)
+
+            # If there is only one possible pit then it is certainly pit 
+            if len(near_possible_pits) == 1:
+                for loc in near_possible_pits:
+                    del self.possible_pits[loc]
+                    self.confirmed_pits.add(loc)
+        
+        # If there's a Wampus nearby, 
+        # add neighbors that aren't in safe locations to possible Wampus 
+        if near_wampus: 
+            # tag the possible wampus with a wampus number
+            self.wampus_counter += 1
+            wampus_tag = "w" + str(self.wampus_counter)
+            near_possible_wampus = []
+            for neighbor in neighbors:
+                if not neighbor in self.safe_locations:
+                   self.possible_wampus[neighbor] = wampus_tag
+                   near_possible_wampus.append(neighbor)
+
+            # If there is only one possible wampus then it is certainly wampus
+            if len(near_possible_wampus) == 1:
+                for loc in near_possible_wampus:
+                    del self.possible_wampus[loc]
+                    self.confirmed_wampus.add(loc)
+
+        # If there is no pit or wampus nearby, add neighbors to the safe locations
+        if not near_pit and not near_wampus:
+            for neighbor in neighbors:
+                if (not neighbor in self.confirmed_pits 
+                    and not neighbor in self.confirmed_wampus): 
+                    self.safe_locations.add(neighbor)
+
+        # Update possible pits and possible wampus and remvoe safe locatiosn from them
         for loc in self.safe_locations:
             if loc in self.possible_pits:
-                self.possible_pits.remove(loc)
+                del self.possible_pits[loc]
             if loc in self.possible_wampus:
-                self.possible_wampus.remove(loc)
+                del self.possible_wampus[loc]
 
+        # Remove confirmed pits and wampus from possible sets
+        for loc in self.confirmed_pits:
+            if loc in self.possible_pits:
+                del self.possible_pits[loc]
+
+        for loc in self.confirmed_wampus:
+            if loc in self.possible_wampus:
+                del self.possible_wampus[loc]
+        
         # Complete the rest of this function so that it finds confirmed_pits and confirmed_wampus
         # and updates possible pits and possible wampus
         # Guide: If at any stage, there is one possible wampus or pit, 
@@ -203,31 +297,10 @@ class World:
         neighbors = self.get_neighbors(self.agent_location).values()    
         
         # Check if any neighbor has a pit
-        near_pit = any(neighbor in self.pit_locations for neighbor in neighbors)
-        # Check if any neighbor has a confirmed pit
-        near_confirmed_pit = any(neighbor in self.confirmed_pits for neighbor in neighbors)
-        
+        self.breeze = any(neighbor in self.pit_locations for neighbor in neighbors)
         # Check if any neighbor has a Wampus
-        near_wampus = any(neighbor in self.wampus_locations for neighbor in neighbors)
-        # Check if any neighbor has a confirmed Wampus
-        near_confirmed_wampus = any(neighbor in self.confirmed_wampus for neighbor in neighbors)
+        self.stench = any(neighbor in self.wampus_locations for neighbor in neighbors)
         
-        # If there's a pit nearby and there is no confirmed pit nearby, 
-        # add neighbors to possible pits 
-        if near_pit and not near_confirmed_pit:
-            for neighbor in neighbors:
-                self.possible_pits.add(neighbor)
-        
-        # If there's a Wampus nearby and there is no confirmed wampus nearby, 
-        # add neighbors to possible Wampus 
-        if near_wampus and not near_confirmed_wampus:
-            for neighbor in neighbors:
-                self.possible_wampus.add(neighbor)
-
-        # If there is no pit or wampus nearby, add all neighbors to the safe locations
-        if not near_pit and not near_wampus:
-            for neighbor in neighbors:
-                self.safe_locations.add(neighbor)
         
 def create_world(use_default=True):
     size = "5" 
