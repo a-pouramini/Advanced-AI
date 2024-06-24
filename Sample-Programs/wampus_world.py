@@ -205,9 +205,40 @@ class World:
 
         return None
 
+    def confirm_singles(self, location):
+        def get_loc_by_tag(d, tag):
+            for key, value in d.items():
+                if value == tag:
+                    return key
+            return None 
+        if location in self.possible_pits:
+            tag = self.possible_pits[location]
+            del self.possible_pits[location]
+            possible_pits_counts = Counter(self.possible_pits.values())
+            counts = possible_pits_counts[tag]
+            if counts == 1:
+               loc = get_loc_by_tag(self.possible_pits, tag) 
+               if loc is not None:
+                   del self.possible_pits[loc]
+                   self.confirmed_pits.add(loc)
+        if location in self.possible_wampus:
+            tag = self.possible_wampus[location]
+            del self.possible_pits[location]
+            possible_wampus_counts = Counter(self.possible_wampus.values())
+            counts = possible_wampus_counts[tag]
+            if counts == 1:
+               loc = get_loc_by_tag(self.possible_wampus, tag) 
+               if loc is not None:
+                   del self.possible_wampus[loc]
+                   self.confirmed_wampus.add(loc)
+
     def update_kb(self):
         # add current agent location to safe locations
-        self.safe_locations.add(self.agent_location)
+        cur_location = self.agent_location
+
+        self.confirm_singles(cur_location)
+
+        self.safe_locations.add(cur_location)
         # if current location is in possible wampus or pits, remove it from them
         loc = self.agent_location
         if loc in self.possible_pits:
@@ -377,7 +408,7 @@ while not quit_game:
     else:
         action = cmd
     if action is None:
-       print("!!!!!!! No safe location is left, you must select to enter a possible hazard")
+       print("!!! No safe location is left, you must select to enter a possible hazard!!!")
        input("Enter any key to continue!")
        continue
     else:
