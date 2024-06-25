@@ -5,21 +5,19 @@ from collections import Counter
 def clear_screen():
     os.system('cls' if os.name=='nt' else 'clear')
 
-# Grid 1
-GRID1 = [['A',' ',' ',' '],  
-         [' ',' ','P',' '],  
-         [' ',' ',' ',' '],  
-         [' ',' ','W','G']] 
-
-# Grid 2
-GRID2 =[['A', ' ', ' ', 'P', ' '],
-        [' ', ' ', ' ', ' ', ' '],
-        [' ', 'P', ' ', ' ', ' '],
-        [' ', ' ', 'P', ' ', ' '],
-        ['W', ' ', ' ', 'W', 'G']]
 
 class World:
     def __init__(self, size, fill_random=False):
+        GRID1 = [['A',' ',' ',' '],  
+                 [' ',' ','P',' '],  
+                 [' ',' ',' ',' '],  
+                 [' ',' ','W','G']] 
+
+        GRID2 =[['A', ' ', ' ', 'P', ' '],
+                [' ', ' ', ' ', ' ', ' '],
+                [' ', 'P', ' ', ' ', ' '],
+                [' ', ' ', 'P', ' ', ' '],
+                ['W', ' ', ' ', 'W', 'G']]
 
         self.grid = GRID2
  
