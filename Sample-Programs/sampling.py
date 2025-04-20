@@ -70,21 +70,54 @@ def calculate_posteriors():
     
     return posterior_sunny, posterior_rainy
 
+def rejection_sampling():
+    accepted_samples = []
+    for _ in range(5000):  # usually more samples needed due to rejection
+        # Sample X from prior
+        x_sample = random.choices(['sunny', 'rainy'], weights=[p_sunny, p_rainy])[0]
+
+        # Sample Y from conditional on X
+        if x_sample == 'sunny':
+            y_sample = random.choices(['yes', 'no'], weights=[p_y_given_sunny, 1 - p_y_given_sunny])[0]
+        else:
+            y_sample = random.choices(['yes', 'no'], weights=[p_y_given_rainy, 1 - p_y_given_rainy])[0]
+
+        # Accept only if Y == 'yes' (i.e., matches the observed evidence)
+        if y_sample == 'yes':
+            accepted_samples.append(x_sample)
+
+    # Count accepted samples
+    count_sunny = accepted_samples.count('sunny')
+    count_rainy = accepted_samples.count('rainy')
+    total = count_sunny + count_rainy
+
+    # Compute posteriors
+    posterior_sunny = count_sunny / total if total > 0 else 0
+    posterior_rainy = count_rainy / total if total > 0 else 0
+
+    return posterior_sunny, posterior_rainy
+
 
 if __name__ == "__main__":
-    posterior_sunny, posterior_rainy = importance_sampling1()
-    print("\nPosterior Probabilities (Importance Sampling):")
-    print(f"P(X = sunny | Y = yes) = {posterior_sunny:.4f}")
-    print(f"P(X = rainy | Y = yes) = {posterior_rainy:.4f}")
-
-
-    posterior_sunny, posterior_rainy = importance_sampling2()
-    print("\nPosterior Probabilities (Importance Sampling):")
-    print(f"P(X = sunny | Y = yes) = {posterior_sunny:.4f}")
-    print(f"P(X = rainy | Y = yes) = {posterior_rainy:.4f}")
-
     posterior_sunny, posterior_rainy = calculate_posteriors()
     print("Posterior Probabilities (Exact Calculations):")
+    print(f"P(X = sunny | Y = yes) = {posterior_sunny:.4f}")
+    print(f"P(X = rainy | Y = yes) = {posterior_rainy:.4f}")
+
+
+    posterior_sunny, posterior_rainy = rejection_sampling()
+    print("\nPosterior Probabilities (Rejection Sampling):")
+    print(f"P(X = sunny | Y = yes) = {posterior_sunny:.4f}")
+    print(f"P(X = rainy | Y = yes) = {posterior_rainy:.4f}")
+
+
+    posterior_sunny, posterior_rainy = importance_sampling1()
+    print("\nPosterior Probabilities (Importance Sampling 1):")
+    print(f"P(X = sunny | Y = yes) = {posterior_sunny:.4f}")
+    print(f"P(X = rainy | Y = yes) = {posterior_rainy:.4f}")
+
+    posterior_sunny, posterior_rainy = importance_sampling2()
+    print("\nPosterior Probabilities (Importance Sampling 2):")
     print(f"P(X = sunny | Y = yes) = {posterior_sunny:.4f}")
     print(f"P(X = rainy | Y = yes) = {posterior_rainy:.4f}")
 
